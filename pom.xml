@@ -28,6 +28,16 @@
             <artifactId>spring-boot-starter-web</artifactId>
             <version>${spring-boot.version}</version>
         </dependency>
+        <!-- aop -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-context</artifactId>
+            <version>5.3.10</version> <!-- 请根据实际情况选择合适的版本 -->
+        </dependency>
         <!-- 日志依赖 -->
         <dependency>
             <groupId>log4j</groupId>
