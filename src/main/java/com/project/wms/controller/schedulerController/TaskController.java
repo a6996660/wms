@@ -83,6 +83,23 @@ public class TaskController {
     public Result enableTask(@RequestBody Taskschedule taskschedule) {
         return taskService.enableTask(taskschedule,"1");
     }
+    /**
+     * 停用任务
+     * @return
+     */
+    @PostMapping("/stopTask")
+    public Result stopTask(@RequestBody Taskschedule taskschedule) {
+        return taskService.stopTask(taskschedule,"0");
+    }
+
+    /**
+     * 停用任务
+     * @return
+     */
+    @GetMapping("/queryEnableTask")
+    public Result queryEnableTask() {
+        return taskService.queryEnableTask();
+    }
 
     @PostMapping("/{taskId}")
     public String addTask(@PathVariable String taskId, @RequestBody Map<String,Object> body) {
@@ -101,8 +118,6 @@ public class TaskController {
                     System.out.println("定时任务执行完毕:" + taskId);
                 });
                 return "天气任务添加成功";
-            case "2":
-                return addMessageTask(requestBody, taskId, cronExpression);
                 
         }
         return "任务已添加: " + taskId;
@@ -124,24 +139,6 @@ public class TaskController {
         return requestBody;
     }
     
-    private String addMessageTask(Map<String, Object> body, String taskId, String cronExpression) {
-        //获取当前时间并转换为 2024-11-7 23:30:00 格式
-        Calendar calendar = Calendar.getInstance();
-        int year = calendar.get(Calendar.YEAR);
-        int month = calendar.get(Calendar.MONTH) + 1;
-        int day = calendar.get(Calendar.DAY_OF_MONTH);
-        int hour = calendar.get(Calendar.HOUR_OF_DAY);
-        int minute = calendar.get(Calendar.MINUTE);
-        int second = calendar.get(Calendar.SECOND);
-        String time = year + "-" + month + "-" + day + " " + hour + ":" + minute + ":" + second;
-        taskService.addTask(taskId, cronExpression, () -> {
-            System.out.println("任务开始执行");
-            heFengWeatherService.sendWebhookMessage(time, (Boolean) body.get("isRoom"), body.get("name").toString(), body.get("url").toString());
-            System.out.println("定时任务执行完毕:" + taskId);
-        });
-        return "消息任务添加成功";
-        
-    }
 
     @DeleteMapping("/{taskId}")
     public String cancelTask(@PathVariable String taskId) {

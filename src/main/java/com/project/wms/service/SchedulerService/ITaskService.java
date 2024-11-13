@@ -15,4 +15,8 @@ public interface ITaskService extends IService<Taskschedule> {
     IPage pageCC(IPage<Taskschedule> page, Wrapper wrapper);
 
     Result enableTask(Taskschedule taskschedule, String type);
+
+    Result stopTask(Taskschedule taskschedule, String number);
+
+    Result queryEnableTask();
 }

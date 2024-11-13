@@ -70,7 +70,7 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
                     String content = EntityUtils.toString(entity, "UTF-8");
 
                     JSONObject weatherData = JSON.parseObject(content);
-                    if (weatherData.containsKey("code") && !weatherData.getString("code").equals("200")){
+                    if (weatherData.containsKey("code") && !weatherData.getString("code").equals("200")) {
                         throw new RuntimeException("请求失败，错误信息：" + weatherData.toString());
                     }
                     JSONArray daily = weatherData.getJSONArray("daily");
@@ -105,7 +105,7 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
         return returnText.toString();
     }
 
-    public void sendWebhookMessage(String message, boolean isRoom, String name, String url) {
+    public String sendWebhookMessage(String message, boolean isRoom, String name, String url) {
         Map<String, Object> body = new HashMap<>();
         body.put("to", name);
         body.put("isRoom", isRoom);
@@ -133,21 +133,25 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
             int responseCode = response.getStatusLine().getStatusCode();
             if (responseCode == 200) {
                 System.out.println("消息发送成功");
+                return "消息发送成功";
             } else {
                 System.out.println("消息发送失败，状态码: " + responseCode);
                 HttpEntity errorEntity = response.getEntity();
                 if (errorEntity != null) {
                     String content = EntityUtils.toString(errorEntity, "UTF-8");
                     System.out.println("响应内容: " + content);
+                    return "消息发送失败:" + content;
                 }
+                return "消息发送失败，状态码: " + responseCode;
             }
         } catch (Exception e) {
             System.out.println("发送消息过程中发生错误：" + e.getMessage());
+            return "发送消息过程中发生错误：" + e.getMessage();
         }
     }
 
 
-    public String weatherService(Map<String,Object> param) {
+    public String weatherService(Map<String, Object> param) {
         if (param == null || param.get("city") == null || param.get("api") == null || param.get("url") == null)
             return "参数错误";
         List<String> paramKeys = Arrays.asList("city", "api", "url", "isRoom", "name");
@@ -156,7 +160,7 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
                 return "参数" + key + "为空";
         }
         List<String> cityList = (List<String>) param.get("city"); // 城市列表
-        String apiKey = param.get("api").toString(); 
+        String apiKey = param.get("api").toString();
         String url = param.get("url").toString();
         Boolean isRoom = (Boolean) param.get("isRoom"); // 是否为群聊
         String name = param.get("name").toString(); // 发送人
@@ -164,7 +168,6 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
         for (String city : cityList) {
             weatherMessage.append(formatWeather(city, getWeather(city, apiKey)));
         }
-        sendWebhookMessage(weatherMessage.toString(), isRoom, name,url);
-        return "success";
+        return sendWebhookMessage(weatherMessage.toString(), isRoom, name, url);
     }
 }
