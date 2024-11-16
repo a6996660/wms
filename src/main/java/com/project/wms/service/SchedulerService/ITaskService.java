@@ -3,9 +3,11 @@ package com.project.wms.service.SchedulerService;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.project.wms.common.QueryPageParam;
 import com.project.wms.common.Result;
 import com.project.wms.entity.schedule.Taskschedule;
 
+import java.util.List;
 import java.util.Map;
 
 public interface ITaskService extends IService<Taskschedule> {
@@ -18,5 +20,7 @@ public interface ITaskService extends IService<Taskschedule> {
 
     Result stopTask(Taskschedule taskschedule, String number);
 
-    Result queryEnableTask();
+    List<String> queryEnableTask();
+    
+    Result listPageC1(QueryPageParam query);
 }
