@@ -3,6 +3,7 @@ package com.project.wms.controller.schedulerController;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
+import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.project.wms.common.QueryPageParam;
@@ -11,18 +12,22 @@ import com.project.wms.common.TenDigitIdGenerator;
 import com.project.wms.entity.manage.BlzcData;
 import com.project.wms.entity.schedule.Taskschedule;
 import com.project.wms.service.SchedulerService.Impl.TaskService;
+import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
 import java.util.*;
+
 @RestController
 @RequestMapping("/taskschedule")
 public class TaskController {
-//    eIdGenerator 实例，假设工作节点 ID 为 1
+    //    eIdGenerator 实例，假设工作节点 ID 为 1
     private final TenDigitIdGenerator idGenerator = new TenDigitIdGenerator();
     @Autowired
     private TaskService taskService;
     @Autowired
     private com.project.wms.service.HFWeather.heFengWeatherService heFengWeatherService;
+
     @Autowired
     public TaskController(TaskService taskService) {
         this.taskService = taskService;
@@ -30,13 +35,13 @@ public class TaskController {
 
     //删除
     @GetMapping("/del")
-    public Result del(@RequestParam String id){
-        return taskService.removeById(id)?Result.suc():Result.fail();
+    public Result del(@RequestParam String id) {
+        return taskService.removeById(id) ? Result.suc() : Result.fail();
     }
 
 
     @GetMapping("/list")
-    public List<Taskschedule> list(){
+    public List<Taskschedule> list() {
         return taskService.list();
     }
 
@@ -49,68 +54,51 @@ public class TaskController {
     //新增
     @PostMapping("/save")
     public Result save(@RequestBody Taskschedule taskschedule) {
-        if (StringUtils.isBlank(taskschedule.getStatus())){
+        if (StringUtils.isBlank(taskschedule.getStatus())) {
             taskschedule.setStatus("0");
         }
-        if (taskschedule.getId() == null){
+        if (taskschedule.getId() == null) {
             taskschedule.setId(idGenerator.nextId());
         }
         return taskService.save(taskschedule) ? Result.suc() : Result.fail();
     }
-    
+
     @PostMapping("/listPageC1")
-    public Result listPageC1(@RequestBody QueryPageParam query){
-//        HashMap param = query.getParam();
-//        String businessId = (String)param.get("businessId");
-        Page<Taskschedule> page = new Page();
-        page.setCurrent(query.getPageNum());
-        page.setSize(query.getPageSize());
-        LambdaQueryWrapper<Taskschedule> lambdaQueryWrapper = new LambdaQueryWrapper();
-//        if(StringUtils.isNotBlank(businessId) && !"null".equals(businessId)){
-//            lambdaQueryWrapper.like(Taskschedule::getBusinessId,businessId);
-//        }
-        //IPage result = iBlzcDataService.pageC(page);
-        IPage result = taskService.pageCC(page,lambdaQueryWrapper);
-        System.out.println("total=="+result.getTotal());
-        return Result.suc(result.getRecords(),result.getTotal());
+    public Result listPageC1(@RequestBody QueryPageParam query) {
+       return taskService.listPageC1(query);
     }
 
     /**
      * 启用任务
+     *
      * @return
      */
     @PostMapping("/enableTask")
     public Result enableTask(@RequestBody Taskschedule taskschedule) {
-        return taskService.enableTask(taskschedule,"1");
+        return taskService.enableTask(taskschedule, "1");
     }
+
     /**
      * 停用任务
+     *
      * @return
      */
     @PostMapping("/stopTask")
     public Result stopTask(@RequestBody Taskschedule taskschedule) {
-        return taskService.stopTask(taskschedule,"0");
+        return taskService.stopTask(taskschedule, "0");
     }
-
-    /**
-     * 停用任务
-     * @return
-     */
-    @GetMapping("/queryEnableTask")
-    public Result queryEnableTask() {
-        return taskService.queryEnableTask();
-    }
+    
 
     @PostMapping("/{taskId}")
-    public String addTask(@PathVariable String taskId, @RequestBody Map<String,Object> body) {
-        if (null == body || !body.containsKey("cronExpression")){
+    public String addTask(@PathVariable String taskId, @RequestBody Map<String, Object> body) {
+        if (null == body || !body.containsKey("cronExpression")) {
             return "参数错误";
         }
         String cronExpression = (String) body.get("cronExpression");
         String taskType = "1"; //默认定时任务类型
         if (body.containsKey("taskType")) taskType = (String) body.get("taskType");
         Map<String, Object> requestBody = getRequestBody(body);
-        switch (taskType){
+        switch (taskType) {
             case "1":
                 taskService.addTask(taskId, cronExpression, () -> {
                     System.out.println("任务开始执行");
@@ -118,7 +106,7 @@ public class TaskController {
                     System.out.println("定时任务执行完毕:" + taskId);
                 });
                 return "天气任务添加成功";
-                
+
         }
         return "任务已添加: " + taskId;
     }
@@ -138,7 +126,7 @@ public class TaskController {
         requestBody.put("name", body.get("name"));
         return requestBody;
     }
-    
+
 
     @DeleteMapping("/{taskId}")
     public String cancelTask(@PathVariable String taskId) {

@@ -3,12 +3,18 @@ package com.project.wms.service.SchedulerService.Impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.Wrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.project.wms.common.QueryPageParam;
 import com.project.wms.entity.schedule.Taskschedule;
 import com.project.wms.mapper.scheduleMapper.ScheduleMapper;
+import com.project.wms.service.ManageService.ILoanrecordsService;
+import com.project.wms.service.ManageService.ILogService;
 import com.project.wms.service.SchedulerService.ITaskService;
+import org.apache.commons.collections4.MapUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.TaskScheduler;
@@ -27,6 +33,12 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
 
     @Autowired
     private heFengWeatherService heFengWeatherService;
+    //日志记录
+    @Autowired
+    private ILoanrecordsService loanrecordsService;
+    //加载Log
+    @Autowired
+    private ILogService logService;
 
     @Resource
     private ScheduleMapper scheduleMapper;
@@ -45,37 +57,41 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
 
     @Override
     public Result enableTask(Taskschedule taskschedule, String type) {
-        Result result = new Result();
-        if (taskschedule.getCron() == null || taskschedule.getTaskid() == null || taskschedule.getParams() == null) {
-            return Result.fail("参数错误");
-        }
-        //获取定时规则
-        String cronExpression = taskschedule.getCron();
-        String taskType = taskschedule.getTasktype();
-        JSONObject params = JSON.parseObject(taskschedule.getParams());
-        Map<String, Object> requestBody = getRequestBodyAndCheck(params);
-        String taskId = taskschedule.getTaskid();
-        String name = taskschedule.getName();
-        String message = "";
-        switch (taskType) {
-            case "1": //想某人发送消息
-                message = addTaskType1(cronExpression, taskId, requestBody, name);
-                break;
-            case "2"://发送天气信息
-                message = addTaskType2(cronExpression, taskId, requestBody, name);
-                break;
-            default:
-                return Result.fail("没有该任务类型");
-        }
+        try {
+            Result result = new Result();
+            if (taskschedule.getCron() == null || taskschedule.getTaskid() == null || taskschedule.getParams() == null) {
+                return Result.fail("参数错误");
+            }
+            //获取定时规则
+            String cronExpression = taskschedule.getCron();
+            String taskType = taskschedule.getTasktype();
+            JSONObject params = JSON.parseObject(taskschedule.getParams());
+            Map<String, Object> requestBody = getRequestBodyAndCheck(params);
+            String taskId = taskschedule.getTaskid();
+            String name = taskschedule.getName();
+            String message = "";
+            switch (taskType) {
+                case "1": //想某人发送消息
+                    message = addTaskType1(cronExpression, taskId, requestBody, name);
+                    break;
+                case "2"://发送天气信息
+                    message = addTaskType2(cronExpression, taskId, requestBody, name);
+                    break;
+                default:
+                    return Result.fail("没有该任务类型");
+            }
 
-        LambdaUpdateWrapper<Taskschedule> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(Taskschedule::getId, taskschedule.getId()).set(Taskschedule::getStatus, type);
-        boolean update = this.update(updateWrapper);
-        if (update) {
-            return result.suc(message);
-        } else {
-            result.fail(message);
-            return result;
+            LambdaUpdateWrapper<Taskschedule> updateWrapper = new LambdaUpdateWrapper<>();
+            updateWrapper.eq(Taskschedule::getId, taskschedule.getId()).set(Taskschedule::getStatus, type);
+            boolean update = this.update(updateWrapper);
+            if (update) {
+                return result.suc(message);
+            } else {
+                result.fail(message);
+                return result;
+            }
+        }catch (Exception e){
+            return Result.fail(e.getMessage());
         }
     }
 
@@ -85,6 +101,7 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
             String time = getCurrentTime();
             String message = heFengWeatherService.sendWebhookMessage(time, (Boolean) body.get("isRoom"), body.get("name").toString(), body.get("url").toString());
             System.out.println(message);
+            logService.insertLog("定时任务", "1", message, "system", name);
             System.out.println("[" + name + "]定时任务执行完毕:" + taskId);
         });
         return name + "任务添加成功";
@@ -93,7 +110,9 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
     private String addTaskType2(String cronExpression, String taskId, Map<String, Object> body, String name) {
         this.addTask(taskId, cronExpression, () -> {
             System.out.println("[" + name + "]任务开始执行:" + taskId);
-            heFengWeatherService.weatherService(body);
+            String message = heFengWeatherService.weatherService(body);
+            System.out.println(message);
+            logService.insertLog("定时任务", "1", message, "system", name);
             System.out.println("[" + name + "]定时任务执行完毕:" + taskId);
         });
         return name + "任务添加成功";
@@ -117,13 +136,15 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
 
     private Map<String, Object> getRequestBodyAndCheck(JSONObject body) {
         Map<String, Object> requestBody = new HashMap<>();
-        if (body.get("city") == null) throw new RuntimeException("city参数为空");
+//        if (body.get("city") == null) throw new RuntimeException("city参数为空");
         if (body.get("api") == null) throw new RuntimeException("api参数为空");
         if (body.get("url") == null) throw new RuntimeException("url参数为空");
         if (body.get("isRoom") == null) throw new RuntimeException("是否为群聊参数为空");
         if (body.get("name") == null) throw new RuntimeException("name参数为空");
-        List<String> cityList = (List<String>) body.get("city");
-        requestBody.put("city", cityList);
+        if (body.get("city") != null){
+            List<String> cityList = (List<String>) body.get("city");
+            requestBody.put("city", cityList);
+        }
         requestBody.put("api", body.get("api")); //d55bd7f0e0524eef9f264b2fdc29b4fe
         requestBody.put("url", body.get("url")); //http://192.168.5.139:3001/webhook/msg/v2?token=dingxhui
         requestBody.put("isRoom", body.get("isRoom"));
@@ -152,13 +173,40 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
      * 查询当前正在运行的任务
      */
     @Override
-    public Result queryEnableTask() {
-        Result result = new Result();
+    public List<String> queryEnableTask() {
         List<String> taskIdList = new ArrayList<>(); 
         for (String key : scheduledTasks.keySet()){
             taskIdList.add(key);
         }
-        return result.suc(taskIdList);
+        return taskIdList;
+    }
+
+    @Override
+    public Result listPageC1(QueryPageParam query) {
+        HashMap param = query.getParam();
+        String name = MapUtils.getString(param, "name");
+        Page<Taskschedule> page = new Page();
+        page.setCurrent(query.getPageNum());
+        page.setSize(query.getPageSize());
+        LambdaQueryWrapper<Taskschedule> lambdaQueryWrapper = new LambdaQueryWrapper();
+        if (name != null) {
+            lambdaQueryWrapper.like(Taskschedule::getName, name);
+        }
+        //IPage result = iBlzcDataService.pageC(page);
+        IPage result = this.pageCC(page, lambdaQueryWrapper);
+        //查找正在运行的调度任务
+        List<String> enableTaskList = queryEnableTask();
+        //从内存中获取任务状态
+        List<Taskschedule> records = (List<Taskschedule>) result.getRecords();
+        records.forEach(item -> {
+            if (enableTaskList.contains(item.getTaskid())) {
+                item.setStatus("1");
+            } else {
+                item.setStatus("0");
+            }
+        });
+        System.out.println("total==" + result.getTotal());
+        return Result.suc(records, result.getTotal());
     }
 
 
