@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
 import com.alibaba.fastjson.JSONArray;
+import com.project.wms.service.ChatGPT.IDouBaoApi;
 import com.project.wms.service.HFWeather.heFengWeatherService;
 
 import java.util.Arrays;
@@ -11,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.project.wms.service.ManageService.ILogService;
 import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -19,10 +21,19 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class heFengWeatherServiceImpl implements heFengWeatherService {
+
+    @Autowired
+    private ILogService logService;
+    @Autowired
+    private IDouBaoApi douBaoApi;
+    @Value("${wechat.config.url}")
+    private String wxMessage_url;
 
     // 请求天气数据的城市代码字典
     private static final Map<String, String> locationIDMap = new HashMap<>();
@@ -112,6 +123,9 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
         Map<String, String> data = new HashMap<>();
         data.put("content", message);
         body.put("data", data);
+        if (url == null || url.isEmpty()) {
+            url = wxMessage_url;
+        }
 
         String jsonBody = JSON.toJSONString(body);
 
@@ -169,5 +183,186 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
             weatherMessage.append(formatWeather(city, getWeather(city, apiKey)));
         }
         return sendWebhookMessage(weatherMessage.toString(), isRoom, name, url);
+    }
+
+//    {
+//        // 消息来自群，会有以下对象，否则为空字符串
+//        "room": {
+//        "id": "@@xxx",
+//                "topic": "abc" // 群名
+//        "payload": {
+//            "id": "@@xxxx",
+//                    "adminIdList": [],
+//            "avatar": "xxxx", // 相对路径，应该要配合解密
+//                    "memberList": [
+//            {
+//                id: '@xxxx',
+//                        avatar: "http://localhost:3001/resouces?media=%2Fcgi-bin%2Fmmwebwx-bixxx", //请配合 token=[YOUR_PERSONAL_TOKEN] 解密
+//                    name:'昵称',
+//                    alias: '备注名'/** 个人备注名，非群备注名 */ }
+//        ]
+//        },
+//        //以下暂不清楚什么用途，如有兴趣，请查阅 wechaty 官网文档
+//        "_events": {},
+//        "_eventsCount": 0,
+//    },
+//
+//
+//        // 消息来自个人，会有以下对象，否则为空字符串
+//        "to": {
+//        "id": "@xxx",
+//
+//                "payload": {
+//            "alias": "", //备注名
+//                    "avatar": "http://localhost:3001/resouces?media=%2Fcgi-bin%2Fmmwebwx-bixxx", //请配合 token=[YOUR_PERSONAL_TOKEN] 解密
+//                    "friend": false,
+//                    "gender": 1,
+//                    "id": "@xxx",
+//                    "name": "xxx",
+//                    "phone": [],
+//            "signature": "hard mode",
+//                    "star": false,
+//                    "type": 1
+//        },
+//
+//        "_events": {},
+//        "_eventsCount": 0,
+//    },
+//
+//        // 消息发送方
+//        "from": {
+//        "id": "@xxx",
+//
+//                "payload": {
+//            "alias": "",
+//                    "avatar": "http://localhost:3001/resouces?media=%2Fcgi-bin%2Fmmwebwx-bixxx", //请配合 token=[YOUR_PERSONAL_TOKEN] 解密
+//                    "city": "北京",
+//                    "friend": true,
+//                    "gender": 1,
+//                    "id": "@xxxx",
+//                    "name": "abc", //昵称
+//                    "phone": [],
+//            "province": "北京",
+//                    "star": false,
+//                    "type": 1
+//        },
+//
+//        "_events": {},
+//        "_eventsCount": 0,
+//    }
+//
+//    }
+
+    /**
+     * 接消息api
+     *
+     * @param body
+     * @return
+     */
+
+    @Override
+    public String receiveMessage(Map<String, Object> body) {
+        Map<String, Object> data = new HashMap<>();
+        if (body == null || body.get("type") == null) {
+            logService.insertLog("接收消息", "receiveMessage", "空参数", "system", "参数错误");
+            return "参数错误";
+        }
+        String logMessage = "";
+        //消息体
+        String message = "";
+        String roomName = ""; //群聊名
+        String name = ""; //发送人
+        Boolean isRoom = false;
+        Boolean isEnable = false; //是否有消息
+        //判断是否被@的群消息
+        if (body.get("isMentioned") != null && "1".equals(body.get("isMentioned").toString())) {
+            if (body.get("content") != null && body.get("type") != null && "text".equals(body.get("type"))) {
+                message = body.get("content").toString();//@丁某某2号 你好
+                if (message.contains("@")) {
+                    message = message.split(" ")[1];
+                    isEnable = true;
+                }
+                //获取source数据
+                if (body.get("source") != null) {
+                    JSONObject source = JSONObject.parseObject(body.get("source").toString());
+                    //拿到群聊数据
+                    if (source.get("room") != null) {
+                        JSONObject room = JSONObject.parseObject(source.get("room").toString());
+                        if (room.get("payload") != null) {
+                            JSONObject payload = JSONObject.parseObject(room.get("payload").toString());
+                            if (payload.get("topic") != null) {
+                                roomName = payload.get("topic").toString();
+                                isRoom = true;
+                            }
+                        }
+                    }
+                    //谁@的我
+                    if (source.get("from") != null) {
+                        JSONObject from = JSONObject.parseObject(source.get("from").toString());
+                        if (from.get("payload") != null) {
+                            JSONObject payload = JSONObject.parseObject(from.get("payload").toString());
+                            if (payload.get("name") != null && payload.get("id") != null) {
+                                //拿到发送人
+                                name = payload.get("name").toString();
+                                String id = payload.get("id").toString();
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (body.get("source") != null && body.get("type") != null && "text".equals(body.get("type"))) {//个人数据
+            if (body.get("content") != null) {
+                message = body.get("content").toString();
+                isEnable = true;
+                //获取source数据
+                if (body.get("source") != null) {
+                    JSONObject source = JSONObject.parseObject(body.get("source").toString());
+                    if (source.get("to") != null && source.get("room") != null) {
+                        JSONObject room = JSONObject.parseObject(source.get("room").toString());
+                        if (room.get("payload") != null) {
+                            return "不需要处理消息";
+                        }
+//                        JSONObject to = JSONObject.parseObject(source.get("to").toString());
+//                        if (to.get("payload") != null) {
+//                            JSONObject payload = JSONObject.parseObject(to.get("payload").toString());
+//                            if (payload.get("name") != null && payload.get("id") != null) {
+//                                //拿到发送人
+//                                name = payload.get("name").toString();
+//                                isRoom = false;
+//                                String id = payload.get("id").toString();
+//                            }
+//                        }
+                        if (source.get("from") != null) {
+                            JSONObject from = JSONObject.parseObject(source.get("from").toString());
+                            if (from.get("payload") != null) {
+                                JSONObject payload = JSONObject.parseObject(from.get("payload").toString());
+                                if (payload.get("name") != null && payload.get("id") != null) {
+                                    //拿到发送人
+                                    name = payload.get("name").toString();
+                                    isRoom = false;
+                                    String id = payload.get("id").toString();
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
+        if (isEnable) {
+            Map<String, String> params = new HashMap<>();
+            params.put("message", message);
+            String result = douBaoApi.chatGPT(params);
+            if (isRoom) {
+                logMessage = "收到群聊【" + roomName + "】来自【" + name + "】的消息：" + message;
+                name = roomName;
+                logService.insertLog("接收消息", "receiveMessage", logMessage, "system", "群聊消息");
+            } else {
+                logMessage = "收到来自【" + name + "】的消息：" + message;
+                logService.insertLog("接收消息", "receiveMessage", logMessage, "system", "个人消息");
+            }
+            return sendWebhookMessage(result, isRoom, name, wxMessage_url);
+        }
+        return "没有发送消息";
     }
 }

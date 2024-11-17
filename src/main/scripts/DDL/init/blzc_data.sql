@@ -60,7 +60,7 @@ CREATE TABLE `blzc_data` (
   `first_bulxc_date` varchar(20) DEFAULT NULL,
   `bank_id` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ;
 
 -- ----------------------------
 -- Records of blzc_data

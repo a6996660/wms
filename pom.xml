@@ -15,6 +15,12 @@
         <spring-boot.version>2.6.13</spring-boot.version>
     </properties>
     <dependencies>
+        <!-- 豆包 -->
+        <dependency>
+            <groupId>com.volcengine</groupId>
+            <artifactId>volcengine-java-sdk-ark-runtime</artifactId>
+            <version>LATEST</version>
+        </dependency>
         <!-- 添加 spring-boot-starter-test 依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

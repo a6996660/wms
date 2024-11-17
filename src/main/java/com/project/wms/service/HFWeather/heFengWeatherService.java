@@ -7,4 +7,5 @@ public interface heFengWeatherService {
     String formatWeather(String cityName, String weatherResult);
     String sendWebhookMessage(String message, boolean isRoom, String name,String url);
     String weatherService(Map<String,Object> param);
+    String receiveMessage(Map<String,Object> body);
 }

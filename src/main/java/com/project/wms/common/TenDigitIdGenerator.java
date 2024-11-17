@@ -1,5 +1,8 @@
 package com.project.wms.common;
 
+/**
+ * 生成10位数的ID
+ */
 public class TenDigitIdGenerator {
     // 起始时间戳（2023-01-01）
     private final static long START_TIMESTAMP = 1672531200000L; // 精确到毫秒

@@ -36,7 +36,7 @@ CREATE TABLE `loanRecords` (
   `receive_time` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '收回时间',
   `remark` text COMMENT '备注',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=1832054287576887299 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1832054287576887299 DEFAULT CHARSET=utf8mb4 ;
 
 -- ----------------------------
 -- Records of loanRecords

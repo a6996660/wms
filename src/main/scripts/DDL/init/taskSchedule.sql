@@ -32,7 +32,7 @@ CREATE TABLE `taskSchedule` (
   `updateTime` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '更新时间',
   `status` varchar(255) DEFAULT '0' COMMENT '状态',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=1856369086651461634 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1856369086651461634 DEFAULT CHARSET=utf8mb4 ;
 
 -- ----------------------------
 -- Records of taskSchedule
