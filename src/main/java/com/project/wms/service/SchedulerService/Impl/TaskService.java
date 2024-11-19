@@ -11,10 +11,12 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.project.wms.common.QueryPageParam;
 import com.project.wms.entity.schedule.Taskschedule;
 import com.project.wms.mapper.scheduleMapper.ScheduleMapper;
+import com.project.wms.service.ChatGPT.IDouBaoApi;
 import com.project.wms.service.ManageService.ILoanrecordsService;
 import com.project.wms.service.ManageService.ILogService;
 import com.project.wms.service.SchedulerService.ITaskService;
 import org.apache.commons.collections4.MapUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.TaskScheduler;
@@ -39,6 +41,12 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
     //加载Log
     @Autowired
     private ILogService logService;
+    
+    @Autowired
+    private IDouBaoApi douBaoApi;
+    
+    @Value("${wechat.config.url}")
+    private String weChatUrl;
 
     @Resource
     private ScheduleMapper scheduleMapper;
@@ -66,7 +74,7 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
             String cronExpression = taskschedule.getCron();
             String taskType = taskschedule.getTasktype();
             JSONObject params = JSON.parseObject(taskschedule.getParams());
-            Map<String, Object> requestBody = getRequestBodyAndCheck(params);
+            Map<String, Object> requestBody = getRequestBodyAndCheck(taskType,params);
             String taskId = taskschedule.getTaskid();
             String name = taskschedule.getName();
             String message = "";
@@ -76,6 +84,9 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
                     break;
                 case "2"://发送天气信息
                     message = addTaskType2(cronExpression, taskId, requestBody, name);
+                    break;
+                case "3": //发送DouBao信息
+                    message = addTaskType3(cronExpression, taskId, requestBody, name);
                     break;
                 default:
                     return Result.fail("没有该任务类型");
@@ -99,7 +110,7 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
         this.addTask(taskId, cronExpression, () -> {
             System.out.println("[" + name + "]任务开始执行:" + taskId);
             String time = getCurrentTime();
-            String message = heFengWeatherService.sendWebhookMessage(time, (Boolean) body.get("isRoom"), body.get("name").toString(), body.get("url").toString());
+            String message = heFengWeatherService.sendWebhookMessage(time, (Boolean) body.get("isRoom"), body.get("name").toString(), weChatUrl);
             System.out.println(message);
             logService.insertLog("定时任务", "1", message, "system", name);
             System.out.println("[" + name + "]定时任务执行完毕:" + taskId);
@@ -113,6 +124,41 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
             String message = heFengWeatherService.weatherService(body);
             System.out.println(message);
             logService.insertLog("定时任务", "1", message, "system", name);
+            System.out.println("[" + name + "]定时任务执行完毕:" + taskId);
+        });
+        return name + "任务添加成功";
+    }
+    /*
+    {
+        "data":[
+            {
+                "name":"丁某某",
+                "isRoom":false,
+                "message":"给大家道个早安并分享名著的一段话"
+            }
+        ]
+    }
+   
+     */
+    
+    
+    private String addTaskType3(String cronExpression, String taskId, Map<String, Object> body, String name) {
+        this.addTask(taskId, cronExpression, () -> {
+            System.out.println("[" + name + "]任务开始执行:" + taskId);
+            List<Map<String, Object>> list = (List<Map<String, Object>>) body.get("data");
+            String errorMessage = "";
+            for (Map<String, Object> map : list){
+                String sendName = (String) map.get("name");
+                Boolean isRoom = (Boolean) map.get("isRoom");
+                String message = (String) map.get("message");
+                Map<String, String> chatParams = new HashMap<>();
+                chatParams.put("message", message);
+                String sendMessage = douBaoApi.chatGPT2(chatParams, taskId);
+                errorMessage += heFengWeatherService.sendWebhookMessage(sendMessage, isRoom, sendName, weChatUrl);
+            }
+   
+            System.out.println(errorMessage);
+            logService.insertLog("定时任务", "3", errorMessage, "system", name);
             System.out.println("[" + name + "]定时任务执行完毕:" + taskId);
         });
         return name + "任务添加成功";
@@ -134,19 +180,22 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
         return time;
     }
 
-    private Map<String, Object> getRequestBodyAndCheck(JSONObject body) {
+    private Map<String, Object> getRequestBodyAndCheck(String taskType,JSONObject body) {
         Map<String, Object> requestBody = new HashMap<>();
-//        if (body.get("city") == null) throw new RuntimeException("city参数为空");
-        if (body.get("api") == null) throw new RuntimeException("api参数为空");
-        if (body.get("url") == null) throw new RuntimeException("url参数为空");
-        if (body.get("isRoom") == null) throw new RuntimeException("是否为群聊参数为空");
-        if (body.get("name") == null) throw new RuntimeException("name参数为空");
-        if (body.get("city") != null){
+        if (taskType.equals("2")) {
+            if (body.get("city") == null) throw new RuntimeException("city参数为空");
             List<String> cityList = (List<String>) body.get("city");
             requestBody.put("city", cityList);
+            if (body.get("api") == null) throw new RuntimeException("api参数为空");
+            requestBody.put("api", body.get("api")); //d55bd7f0e0524eef9f264b2fdc29b4fe
+        } else if (taskType.equals("1")) {
+            if (body.get("isRoom") == null) throw new RuntimeException("是否为群聊参数为空");
+            if (body.get("name") == null) throw new RuntimeException("name参数为空");
+        } else if (taskType.equals("3")) {
+            return body;
         }
-        requestBody.put("api", body.get("api")); //d55bd7f0e0524eef9f264b2fdc29b4fe
-        requestBody.put("url", body.get("url")); //http://192.168.5.139:3001/webhook/msg/v2?token=dingxhui
+//        if (body.get("url") == null) throw new RuntimeException("url参数为空");
+//        requestBody.put("url", body.get("url")); //http://192.168.5.139:3001/webhook/msg/v2?token=dingxhui
         requestBody.put("isRoom", body.get("isRoom"));
         requestBody.put("name", body.get("name"));
         return requestBody;
