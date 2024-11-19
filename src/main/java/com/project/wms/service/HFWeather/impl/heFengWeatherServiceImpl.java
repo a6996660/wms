@@ -274,54 +274,55 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
         String name = ""; //发送人
         Boolean isRoom = false;
         Boolean isEnable = false; //是否有消息
-        //判断是否被@的群消息
-        if (body.get("isMentioned") != null && "1".equals(body.get("isMentioned").toString())) {
-            if (body.get("content") != null && body.get("type") != null && "text".equals(body.get("type"))) {
-                message = body.get("content").toString();//@丁某某2号 你好
-                if (message.contains("@")) {
-                    message = message.split(" ")[1];
+        try {
+            //判断是否被@的群消息
+            if (body.get("isMentioned") != null && "1".equals(body.get("isMentioned").toString())) {
+                if (body.get("content") != null && body.get("type") != null && "text".equals(body.get("type"))) {
+                    message = body.get("content").toString();//@丁某某2号 你好
+                    if (message.contains("@")) {
+                        message = message.substring(7);
+                        isEnable = true;
+                    }
+                    //获取source数据
+                    if (body.get("source") != null) {
+                        JSONObject source = JSONObject.parseObject(body.get("source").toString());
+                        //拿到群聊数据
+                        if (source.get("room") != null) {
+                            JSONObject room = JSONObject.parseObject(source.get("room").toString());
+                            if (room.get("payload") != null) {
+                                JSONObject payload = JSONObject.parseObject(room.get("payload").toString());
+                                if (payload.get("topic") != null) {
+                                    roomName = payload.get("topic").toString();
+                                    isRoom = true;
+                                }
+                            }
+                        }
+                        //谁@的我
+                        if (source.get("from") != null) {
+                            JSONObject from = JSONObject.parseObject(source.get("from").toString());
+                            if (from.get("payload") != null) {
+                                JSONObject payload = JSONObject.parseObject(from.get("payload").toString());
+                                if (payload.get("name") != null && payload.get("id") != null) {
+                                    //拿到发送人
+                                    name = payload.get("name").toString();
+                                    String id = payload.get("id").toString();
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (body.get("source") != null && body.get("type") != null && "text".equals(body.get("type"))) {//个人数据
+                if (body.get("content") != null) {
+                    message = body.get("content").toString();
                     isEnable = true;
-                }
-                //获取source数据
-                if (body.get("source") != null) {
-                    JSONObject source = JSONObject.parseObject(body.get("source").toString());
-                    //拿到群聊数据
-                    if (source.get("room") != null) {
-                        JSONObject room = JSONObject.parseObject(source.get("room").toString());
-                        if (room.get("payload") != null) {
-                            JSONObject payload = JSONObject.parseObject(room.get("payload").toString());
-                            if (payload.get("topic") != null) {
-                                roomName = payload.get("topic").toString();
-                                isRoom = true;
+                    //获取source数据
+                    if (body.get("source") != null) {
+                        JSONObject source = JSONObject.parseObject(body.get("source").toString());
+                        if (source.get("to") != null && source.get("room") != null) {
+                            JSONObject room = JSONObject.parseObject(source.get("room").toString());
+                            if (room.get("payload") != null) {
+                                return "不需要处理消息";
                             }
-                        }
-                    }
-                    //谁@的我
-                    if (source.get("from") != null) {
-                        JSONObject from = JSONObject.parseObject(source.get("from").toString());
-                        if (from.get("payload") != null) {
-                            JSONObject payload = JSONObject.parseObject(from.get("payload").toString());
-                            if (payload.get("name") != null && payload.get("id") != null) {
-                                //拿到发送人
-                                name = payload.get("name").toString();
-                                String id = payload.get("id").toString();
-                            }
-                        }
-                    }
-                }
-            }
-        } else if (body.get("source") != null && body.get("type") != null && "text".equals(body.get("type"))) {//个人数据
-            if (body.get("content") != null) {
-                message = body.get("content").toString();
-                isEnable = true;
-                //获取source数据
-                if (body.get("source") != null) {
-                    JSONObject source = JSONObject.parseObject(body.get("source").toString());
-                    if (source.get("to") != null && source.get("room") != null) {
-                        JSONObject room = JSONObject.parseObject(source.get("room").toString());
-                        if (room.get("payload") != null) {
-                            return "不需要处理消息";
-                        }
 //                        JSONObject to = JSONObject.parseObject(source.get("to").toString());
 //                        if (to.get("payload") != null) {
 //                            JSONObject payload = JSONObject.parseObject(to.get("payload").toString());
@@ -332,27 +333,30 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
 //                                String id = payload.get("id").toString();
 //                            }
 //                        }
-                        if (source.get("from") != null) {
-                            JSONObject from = JSONObject.parseObject(source.get("from").toString());
-                            if (from.get("payload") != null) {
-                                JSONObject payload = JSONObject.parseObject(from.get("payload").toString());
-                                if (payload.get("name") != null && payload.get("id") != null) {
-                                    //拿到发送人
-                                    name = payload.get("name").toString();
-                                    isRoom = false;
-                                    String id = payload.get("id").toString();
+                            if (source.get("from") != null) {
+                                JSONObject from = JSONObject.parseObject(source.get("from").toString());
+                                if (from.get("payload") != null) {
+                                    JSONObject payload = JSONObject.parseObject(from.get("payload").toString());
+                                    if (payload.get("name") != null && payload.get("id") != null) {
+                                        //拿到发送人
+                                        name = payload.get("name").toString();
+                                        isRoom = false;
+                                        String id = payload.get("id").toString();
+                                    }
                                 }
                             }
                         }
-                    }
 
+                    }
                 }
             }
+        }catch (Exception e){
+            logService.insertLog("接收消息", "error", e.toString(), "system", "豆包接收消息异常");
+            return "接收消息异常";
         }
         if (isEnable) {
             Map<String, String> params = new HashMap<>();
             params.put("message", message);
-            String result = douBaoApi.chatGPT(params);
             if (isRoom) {
                 logMessage = "收到群聊【" + roomName + "】来自【" + name + "】的消息：" + message;
                 name = roomName;
@@ -360,7 +364,8 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
             } else {
                 logMessage = "收到来自【" + name + "】的消息：" + message;
                 logService.insertLog("接收消息", "receiveMessage", logMessage, "system", "个人消息");
-            }
+            }     
+            String result = douBaoApi.chatGPT2(params,name);
             return sendWebhookMessage(result, isRoom, name, wxMessage_url);
         }
         return "没有发送消息";
