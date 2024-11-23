@@ -279,8 +279,8 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
             if (body.get("isMentioned") != null && "1".equals(body.get("isMentioned").toString())) {
                 if (body.get("content") != null && body.get("type") != null && "text".equals(body.get("type"))) {
                     message = body.get("content").toString();//@丁某某2号 你好
-                    if (message.contains("@")) {
-                        message = message.substring(7);
+                    if (message.contains("@丁某某2号")) {
+                        message = message.replace("@丁某某2号", "");
                         isEnable = true;
                     }
                     //获取source数据
@@ -356,15 +356,16 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
         }
         if (isEnable) {
             Map<String, String> params = new HashMap<>();
-            params.put("message", message);
             if (isRoom) {
                 logMessage = "收到群聊【" + roomName + "】来自【" + name + "】的消息：" + message;
+                message = name + ":" + message;
                 name = roomName;
                 logService.insertLog("接收消息", "receiveMessage", logMessage, "system", "群聊消息");
             } else {
                 logMessage = "收到来自【" + name + "】的消息：" + message;
                 logService.insertLog("接收消息", "receiveMessage", logMessage, "system", "个人消息");
-            }     
+            } 
+            params.put("message", message);     
             String result = douBaoApi.chatGPT2(params,name);
             return sendWebhookMessage(result, isRoom, name, wxMessage_url);
         }

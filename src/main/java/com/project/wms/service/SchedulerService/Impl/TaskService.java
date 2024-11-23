@@ -132,9 +132,40 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
     {
         "data":[
             {
-                "name":"丁某某",
-                "isRoom":false,
-                "message":"给大家道个早安并分享名著的一段话"
+                "name":"生活如此美好",
+                "isRoom":true,
+                "message":"
+                给大家道个早安并分享名著的一段话，格式如下：
+                早安，各位！
+
+                “满地都是六便士，他却抬头看见了月亮。”——《月亮与六便士》
+
+                对大家的鼓励
+                "
+            },
+            {
+                "name":"交个朋友",
+                "isRoom":true,
+                "message":"
+                给大家道个早安并分享名著的一段话，格式如下：
+                早安，各位！
+
+                “满地都是六便士，他却抬头看见了月亮。”——《月亮与六便士》
+
+                对大家的鼓励
+                "
+            },
+            {
+                "name":"大农村的打工人",
+                "isRoom":true,
+                "message":"
+                给大家道个早安并分享名著的一段话，格式如下：
+                早安，各位！
+
+                “满地都是六便士，他却抬头看见了月亮。”——《月亮与六便士》
+
+                对大家的鼓励
+                "
             }
         ]
     }

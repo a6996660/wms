@@ -1,13 +1,13 @@
 # 数据库连接配置
 server:
     #本地端口
-    port: 8090
+    port: 8091
 spring:
     datasource:
         #数据库账号密码
-        url: jdbc:p6spy:mysql://127.0.0.1:3306/test?rewriteBatchedStatements=true&useUnicode=true&characterEncoding=utf-8
-        username: root
-        password: Ab660855
+        url: jdbc:p6spy:mysql://192.168.5.139:3306/test?rewriteBatchedStatements=true&useUnicode=true&characterEncoding=utf-8
+        username: remote_user
+        password: 1234
         driver-class-name: com.p6spy.engine.spy.P6SpyDriver
 #sql日志打印
 decorator:
@@ -21,4 +21,14 @@ decorator:
 #mybatis-plus:
 #    configuration:
 #        log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+app:
+    config:
+        DouBaoApiKey: "d399d950-e898-4155-bb0a-8d8f00bdd3a5"
+        baseUrl: "https://ark.cn-beijing.volces.com/api/v3/"
+        model: "ep-20241117183407-pk7f6"
+wechat:
+    config:
+        url: "http://192.168.5.139:3001/webhook/msg/v2?token=dingxhui"
+
 
