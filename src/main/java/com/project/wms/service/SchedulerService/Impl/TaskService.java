@@ -28,13 +28,13 @@ import java.util.*;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.project.wms.service.HFWeather.heFengWeatherService;
+import com.project.wms.service.MessageService.IMessageService;
 
 @Service
 public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> implements ITaskService {
 
     @Autowired
-    private heFengWeatherService heFengWeatherService;
+    private IMessageService IMessageService;
     //日志记录
     @Autowired
     private ILoanrecordsService loanrecordsService;
@@ -110,7 +110,7 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
         this.addTask(taskId, cronExpression, () -> {
             System.out.println("[" + name + "]任务开始执行:" + taskId);
             String time = getCurrentTime();
-            String message = heFengWeatherService.sendWebhookMessage(time, (Boolean) body.get("isRoom"), body.get("name").toString(), weChatUrl);
+            String message = IMessageService.sendWebhookMessage(time, (Boolean) body.get("isRoom"), body.get("name").toString(), weChatUrl);
             System.out.println(message);
             logService.insertLog("定时任务", "1", message, "system", name);
             System.out.println("[" + name + "]定时任务执行完毕:" + taskId);
@@ -121,7 +121,7 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
     private String addTaskType2(String cronExpression, String taskId, Map<String, Object> body, String name) {
         this.addTask(taskId, cronExpression, () -> {
             System.out.println("[" + name + "]任务开始执行:" + taskId);
-            String message = heFengWeatherService.weatherService(body);
+            String message = IMessageService.weatherService(body);
             System.out.println(message);
             logService.insertLog("定时任务", "1", message, "system", name);
             System.out.println("[" + name + "]定时任务执行完毕:" + taskId);
@@ -185,7 +185,7 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
                 Map<String, String> chatParams = new HashMap<>();
                 chatParams.put("message", message);
                 String sendMessage = douBaoApi.chatGPT2(chatParams, taskId);
-                errorMessage += heFengWeatherService.sendWebhookMessage(sendMessage, isRoom, sendName, weChatUrl);
+                errorMessage += IMessageService.sendWebhookMessage(sendMessage, isRoom, sendName, weChatUrl);
             }
    
             System.out.println(errorMessage);

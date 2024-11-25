@@ -1,18 +1,12 @@
 package com.project.wms.controller.schedulerController;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
-import com.baomidou.mybatisplus.core.toolkit.ObjectUtils;
 import com.baomidou.mybatisplus.core.toolkit.StringUtils;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.project.wms.common.QueryPageParam;
 import com.project.wms.common.Result;
 import com.project.wms.common.TenDigitIdGenerator;
-import com.project.wms.entity.manage.BlzcData;
 import com.project.wms.entity.schedule.Taskschedule;
+import com.project.wms.service.MessageService.IMessageService;
 import com.project.wms.service.SchedulerService.Impl.TaskService;
-import org.apache.commons.collections4.MapUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +20,7 @@ public class TaskController {
     @Autowired
     private TaskService taskService;
     @Autowired
-    private com.project.wms.service.HFWeather.heFengWeatherService heFengWeatherService;
+    private IMessageService IMessageService;
 
     @Autowired
     public TaskController(TaskService taskService) {
@@ -102,7 +96,7 @@ public class TaskController {
             case "1":
                 taskService.addTask(taskId, cronExpression, () -> {
                     System.out.println("任务开始执行");
-                    heFengWeatherService.weatherService(requestBody);
+                    IMessageService.weatherService(requestBody);
                     System.out.println("定时任务执行完毕:" + taskId);
                 });
                 return "天气任务添加成功";

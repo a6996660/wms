@@ -1,6 +1,6 @@
-package com.project.wms.controller.HFController;
+package com.project.wms.controller.MessageController;
 
-import com.project.wms.service.HFWeather.heFengWeatherService;
+import com.project.wms.service.MessageService.IMessageService;
 import com.project.wms.service.ManageService.ILogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,14 +12,14 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/weather")
-public class heFengWeatherController {
+public class messageController {
     @Autowired
-    private heFengWeatherService heFengWeatherService;
+    private IMessageService IMessageService;
     @Autowired
     private ILogService logService;
     @RequestMapping("/sendWeatherMessage")
     public String sendWeatherMessage(@RequestBody Map<String, Object> body) {
-        return heFengWeatherService.weatherService(body);
+        return IMessageService.weatherService(body);
             
     }
 
@@ -31,6 +31,6 @@ public class heFengWeatherController {
      */
     @RequestMapping("/receiveMessage")
     public String receiveMessage(@RequestParam Map<String, Object> body) {
-        return heFengWeatherService.receiveMessage(body);
+        return IMessageService.receiveMessage(body);
     }
 }

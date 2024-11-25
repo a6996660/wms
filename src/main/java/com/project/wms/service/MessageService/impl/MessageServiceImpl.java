@@ -1,11 +1,12 @@
-package com.project.wms.service.HFWeather.impl;
+package com.project.wms.service.MessageService.impl;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
 import com.alibaba.fastjson.JSONArray;
+import com.project.wms.entity.message.WeChatMessage;
 import com.project.wms.service.ChatGPT.IDouBaoApi;
-import com.project.wms.service.HFWeather.heFengWeatherService;
+import com.project.wms.service.MessageService.IMessageService;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -26,7 +27,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-public class heFengWeatherServiceImpl implements heFengWeatherService {
+public class MessageServiceImpl implements IMessageService {
 
     @Autowired
     private ILogService logService;
@@ -370,5 +371,104 @@ public class heFengWeatherServiceImpl implements heFengWeatherService {
             return sendWebhookMessage(result, isRoom, name, wxMessage_url);
         }
         return "没有发送消息";
+    }
+    
+    public WeChatMessage receiveWeChatMessage(Map<String, Object> body){
+        WeChatMessage weChatMessage = new WeChatMessage();
+        if (body == null || body.get("type") == null) {
+            logService.insertLog("接收消息", "receiveMessage", "空参数", "system", "参数错误");
+            weChatMessage.setLog("参数错误");
+            return weChatMessage;
+        }
+        String logMessage = "";
+        //消息体
+        String message = "";
+        String roomName = ""; //群聊名
+        String name = ""; //发送人
+        Boolean isRoom = false;
+        Boolean isEnable = false; //是否有消息
+        try {
+            //判断是否被@的群消息
+            if (body.get("isMentioned") != null && "1".equals(body.get("isMentioned").toString())) {
+                if (body.get("content") != null && body.get("type") != null && "text".equals(body.get("type"))) {
+                    message = body.get("content").toString();//@丁某某2号 你好
+                    if (message.contains("@丁某某2号")) {
+                        message = message.replace("@丁某某2号", "");
+                        isEnable = true;
+                    }
+                    //获取source数据
+                    if (body.get("source") != null) {
+                        JSONObject source = JSONObject.parseObject(body.get("source").toString());
+                        //拿到群聊数据
+                        if (source.get("room") != null) {
+                            JSONObject room = JSONObject.parseObject(source.get("room").toString());
+                            if (room.get("payload") != null) {
+                                JSONObject payload = JSONObject.parseObject(room.get("payload").toString());
+                                if (payload.get("topic") != null) {
+                                    roomName = payload.get("topic").toString();
+                                    isRoom = true;
+                                }
+                            }
+                        }
+                        //谁@的我
+                        if (source.get("from") != null) {
+                            JSONObject from = JSONObject.parseObject(source.get("from").toString());
+                            if (from.get("payload") != null) {
+                                JSONObject payload = JSONObject.parseObject(from.get("payload").toString());
+                                if (payload.get("name") != null && payload.get("id") != null) {
+                                    //拿到发送人
+                                    name = payload.get("name").toString();
+                                    String id = payload.get("id").toString();
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (body.get("source") != null && body.get("type") != null && "text".equals(body.get("type"))) {//个人数据
+                if (body.get("content") != null) {
+                    message = body.get("content").toString();
+                    isEnable = true;
+                    //获取source数据
+                    if (body.get("source") != null) {
+                        JSONObject source = JSONObject.parseObject(body.get("source").toString());
+                        if (source.get("to") != null && source.get("room") != null) {
+                            JSONObject room = JSONObject.parseObject(source.get("room").toString());
+                            if (room.get("payload") != null) {
+                                weChatMessage.setLog("不需要处理消息");
+                                return weChatMessage;
+                            }
+//                        JSONObject to = JSONObject.parseObject(source.get("to").toString());
+//                        if (to.get("payload") != null) {
+//                            JSONObject payload = JSONObject.parseObject(to.get("payload").toString());
+//                            if (payload.get("name") != null && payload.get("id") != null) {
+//                                //拿到发送人
+//                                name = payload.get("name").toString();
+//                                isRoom = false;
+//                                String id = payload.get("id").toString();
+//                            }
+//                        }
+                            if (source.get("from") != null) {
+                                JSONObject from = JSONObject.parseObject(source.get("from").toString());
+                                if (from.get("payload") != null) {
+                                    JSONObject payload = JSONObject.parseObject(from.get("payload").toString());
+                                    if (payload.get("name") != null && payload.get("id") != null) {
+                                        //拿到发送人
+                                        name = payload.get("name").toString();
+                                        isRoom = false;
+                                        String id = payload.get("id").toString();
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                }
+            }
+        }catch (Exception e){
+            logService.insertLog("接收消息", "error", e.toString(), "system", "豆包接收消息异常");
+            weChatMessage.setLog("不需要处理消息");
+            return weChatMessage;
+        }
+        return weChatMessage;
     }
 }
