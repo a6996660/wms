@@ -26,7 +26,8 @@ app:
     config:
         DouBaoApiKey: "d399d950-e898-4155-bb0a-8d8f00bdd3a5"
         baseUrl: "https://ark.cn-beijing.volces.com/api/v3/"
-        model: "ep-20241117183407-pk7f6"
+        model: "ep-20241125221621-wqp4t"
+        botId: "bot-20241125225426-wzcrl"
 wechat:
     config:
         url: "http://192.168.5.139:3001/webhook/msg/v2?token=dingxhui"

@@ -41,10 +41,10 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
     //加载Log
     @Autowired
     private ILogService logService;
-    
+
     @Autowired
     private IDouBaoApi douBaoApi;
-    
+
     @Value("${wechat.config.url}")
     private String weChatUrl;
 
@@ -74,7 +74,7 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
             String cronExpression = taskschedule.getCron();
             String taskType = taskschedule.getTasktype();
             JSONObject params = JSON.parseObject(taskschedule.getParams());
-            Map<String, Object> requestBody = getRequestBodyAndCheck(taskType,params);
+            Map<String, Object> requestBody = getRequestBodyAndCheck(taskType, params);
             String taskId = taskschedule.getTaskid();
             String name = taskschedule.getName();
             String message = "";
@@ -101,7 +101,7 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
                 result.fail(message);
                 return result;
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             return Result.fail(e.getMessage());
         }
     }
@@ -130,64 +130,51 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
     }
     /*
     {
+        "message":[
+            "给大家道个早安并分享一个冷知识，要求与之前的不同",
+            "给大家道个早安并分享电影中的台词，要求与之前的不同",
+            "给大家道个早安并分享一段话，要求与之前的不同",
+            "给大家道个早安并分享一句歌词，要求与之前的不同",
+            "给大家道个早安并分享书中的一句话，要求与之前的不同"
+        ],
         "data":[
             {
                 "name":"生活如此美好",
-                "isRoom":true,
-                "message":"
-                给大家道个早安并分享名著的一段话，格式如下：
-                早安，各位！
-
-                “满地都是六便士，他却抬头看见了月亮。”——《月亮与六便士》
-
-                对大家的鼓励
-                "
+                "isRoom":true
             },
             {
                 "name":"交个朋友",
-                "isRoom":true,
-                "message":"
-                给大家道个早安并分享名著的一段话，格式如下：
-                早安，各位！
-
-                “满地都是六便士，他却抬头看见了月亮。”——《月亮与六便士》
-
-                对大家的鼓励
-                "
+                "isRoom":true
             },
             {
                 "name":"大农村的打工人",
-                "isRoom":true,
-                "message":"
-                给大家道个早安并分享名著的一段话，格式如下：
-                早安，各位！
-
-                “满地都是六便士，他却抬头看见了月亮。”——《月亮与六便士》
-
-                对大家的鼓励
-                "
+                "isRoom":true
             }
         ]
     }
    
      */
-    
-    
+
+
     private String addTaskType3(String cronExpression, String taskId, Map<String, Object> body, String name) {
         this.addTask(taskId, cronExpression, () -> {
             System.out.println("[" + name + "]任务开始执行:" + taskId);
             List<Map<String, Object>> list = (List<Map<String, Object>>) body.get("data");
+            List<String> messageList = (List<String>) body.get("message");
             String errorMessage = "";
-            for (Map<String, Object> map : list){
+            for (Map<String, Object> map : list) {
                 String sendName = (String) map.get("name");
                 Boolean isRoom = (Boolean) map.get("isRoom");
-                String message = (String) map.get("message");
+                Random random = new Random();
+                int index = random.nextInt(messageList.size());
+                String message = messageList.get(index).toString();
+                ;
                 Map<String, String> chatParams = new HashMap<>();
                 chatParams.put("message", message);
-                String sendMessage = douBaoApi.chatGPT2(chatParams, taskId);
+                String sendMessage = douBaoApi.chatGPT2(chatParams, taskId, true);
                 errorMessage += IMessageService.sendWebhookMessage(sendMessage, isRoom, sendName, weChatUrl);
             }
-   
+
             System.out.println(errorMessage);
             logService.insertLog("定时任务", "3", errorMessage, "system", name);
             System.out.println("[" + name + "]定时任务执行完毕:" + taskId);
@@ -211,7 +198,7 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
         return time;
     }
 
-    private Map<String, Object> getRequestBodyAndCheck(String taskType,JSONObject body) {
+    private Map<String, Object> getRequestBodyAndCheck(String taskType, JSONObject body) {
         Map<String, Object> requestBody = new HashMap<>();
         if (taskType.equals("2")) {
             if (body.get("city") == null) throw new RuntimeException("city参数为空");
@@ -254,8 +241,8 @@ public class TaskService extends ServiceImpl<ScheduleMapper, Taskschedule> imple
      */
     @Override
     public List<String> queryEnableTask() {
-        List<String> taskIdList = new ArrayList<>(); 
-        for (String key : scheduledTasks.keySet()){
+        List<String> taskIdList = new ArrayList<>();
+        for (String key : scheduledTasks.keySet()) {
             taskIdList.add(key);
         }
         return taskIdList;

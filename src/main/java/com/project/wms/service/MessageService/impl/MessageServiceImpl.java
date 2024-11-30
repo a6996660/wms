@@ -367,7 +367,7 @@ public class MessageServiceImpl implements IMessageService {
                 logService.insertLog("接收消息", "receiveMessage", logMessage, "system", "个人消息");
             } 
             params.put("message", message);     
-            String result = douBaoApi.chatGPT2(params,name);
+            String result = douBaoApi.chatGPT2(params,name,true);
             return sendWebhookMessage(result, isRoom, name, wxMessage_url);
         }
         return "没有发送消息";
@@ -394,6 +394,7 @@ public class MessageServiceImpl implements IMessageService {
                     message = body.get("content").toString();//@丁某某2号 你好
                     if (message.contains("@丁某某2号")) {
                         message = message.replace("@丁某某2号", "");
+                        weChatMessage.setMessage(message);
                         isEnable = true;
                     }
                     //获取source数据
@@ -406,6 +407,8 @@ public class MessageServiceImpl implements IMessageService {
                                 JSONObject payload = JSONObject.parseObject(room.get("payload").toString());
                                 if (payload.get("topic") != null) {
                                     roomName = payload.get("topic").toString();
+                                    weChatMessage.setRoomName(roomName);
+                                    weChatMessage.setRoom(true);
                                     isRoom = true;
                                 }
                             }
@@ -418,6 +421,7 @@ public class MessageServiceImpl implements IMessageService {
                                 if (payload.get("name") != null && payload.get("id") != null) {
                                     //拿到发送人
                                     name = payload.get("name").toString();
+                                    weChatMessage.setName(name);
                                     String id = payload.get("id").toString();
                                 }
                             }
@@ -427,6 +431,7 @@ public class MessageServiceImpl implements IMessageService {
             } else if (body.get("source") != null && body.get("type") != null && "text".equals(body.get("type"))) {//个人数据
                 if (body.get("content") != null) {
                     message = body.get("content").toString();
+                    weChatMessage.setMessage(message);
                     isEnable = true;
                     //获取source数据
                     if (body.get("source") != null) {
@@ -454,6 +459,8 @@ public class MessageServiceImpl implements IMessageService {
                                     if (payload.get("name") != null && payload.get("id") != null) {
                                         //拿到发送人
                                         name = payload.get("name").toString();
+                                        weChatMessage.setName(name);
+                                        weChatMessage.setRoom(false);
                                         isRoom = false;
                                         String id = payload.get("id").toString();
                                     }

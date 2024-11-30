@@ -2,13 +2,14 @@ package com.project.wms.service.ChatGPT.Impl;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.TypeReference;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
+import com.volcengine.ark.runtime.model.bot.completion.chat.BotChatCompletionRequest;
+import com.volcengine.ark.runtime.model.bot.completion.chat.BotChatCompletionResult;
 import com.project.wms.common.TenDigitIdGenerator;
 import com.project.wms.entity.message.SessionContext;
 import com.project.wms.mapper.messageMapper.SessionContextMapper;
 import com.project.wms.service.ChatGPT.IDouBaoApi;
 import com.project.wms.service.ManageService.ILogService;
+import com.volcengine.ark.runtime.model.bot.completion.chat.BotChatCompletionRequest;
 import com.volcengine.ark.runtime.model.completion.chat.ChatCompletionRequest;
 import com.volcengine.ark.runtime.model.completion.chat.ChatMessage;
 import com.volcengine.ark.runtime.model.completion.chat.ChatMessageRole;
@@ -36,16 +37,19 @@ public class DouBaoImpl implements IDouBaoApi {
 
     @Value("${app.config.model}")
     private String model;
+
+    @Value("${app.config.botId}")
+    private String botId;
     @Autowired
     private SessionContextMapper sessionContextMapper;
     @Autowired
     private ILogService logService;
 
     private final ConcurrentHashMap<String, List<ChatMessage>> inMemorySessionContext = new ConcurrentHashMap<>();
-    
+
     private static final int MAX_CONTEXT_LENGTH = 20; // 最大上下文长度
-    
-    public String chatGPT2(Map<String, String> params, String sessionId) {
+
+    public String chatGPT2(Map<String, String> params, String sessionId, Boolean isBot) {
         try {
             if (params.get("message") == null || params.get("message").isEmpty()) return "消息为空";
             String message = params.get("message");
@@ -69,33 +73,45 @@ public class DouBaoImpl implements IDouBaoApi {
             while (messages.size() > MAX_CONTEXT_LENGTH) {
                 messages.remove(0); // 删除最早的几条消息,防止缓存溢出
             }
-
-
-            // 构建请求
-            ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
-                    .model(model)
-                    .messages(messages)
-                    .build();
-
             // 创建服务实例
             ArkService service = ArkService.builder().apiKey(apiKey).baseUrl(baseUrl).build();
-
             // 发送请求并获取响应
             AtomicReference<String> returnMessage = new AtomicReference<>("");
-
-            service.createChatCompletion(chatCompletionRequest).getChoices().forEach(
-                    choice -> {
-                        String content = choice.getMessage().getContent().toString();
-                        returnMessage.set(content);
-
-                        // 将助手的回复添加到上下文中
-                        ChatMessage assistantMessage = ChatMessage.builder().role(ChatMessageRole.ASSISTANT).content(content).build();
-                        messages.add(assistantMessage);
-                        // 保存一段会话上下文
-                        this.saveSessionContext(sessionId, assistantMessage);
-                    }
-            );
-
+            if (isBot){
+                BotChatCompletionRequest chatCompletionRequest = BotChatCompletionRequest.builder()
+                        .botId(botId) //bot-20241125225426-wzcrl 为您当前的智能体的ID，注意此处与Chat API存在差异。差异对比详见 SDK使用指南
+                        .messages(messages)
+                        .build();
+                BotChatCompletionResult chatCompletionResult =  service.createBotChatCompletion(chatCompletionRequest);
+                chatCompletionResult.getChoices().forEach(
+                        choice -> {
+                            String content = choice.getMessage().getContent().toString();
+                            returnMessage.set(content);
+                            // 将助手的回复添加到上下文中
+                            ChatMessage assistantMessage = ChatMessage.builder().role(ChatMessageRole.ASSISTANT).content(content).build();
+                            messages.add(assistantMessage);
+                            // 保存一段会话上下文
+                            this.saveSessionContext(sessionId, assistantMessage);
+                        }
+                );
+            }else{
+                // 构建请求
+                ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
+                        .model(model)
+                        .messages(messages)
+                        .build();
+                service.createChatCompletion(chatCompletionRequest).getChoices().forEach(
+                        choice -> {
+                            String content = choice.getMessage().getContent().toString();
+                            returnMessage.set(content);
+                            // 将助手的回复添加到上下文中
+                            ChatMessage assistantMessage = ChatMessage.builder().role(ChatMessageRole.ASSISTANT).content(content).build();
+                            messages.add(assistantMessage);
+                            // 保存一段会话上下文
+                            this.saveSessionContext(sessionId, assistantMessage);
+                        }
+                );
+            }
             // 打印返回的消息内容
 //            System.out.println(returnMessage);
             //更新内存中的会话上下文
@@ -113,6 +129,7 @@ public class DouBaoImpl implements IDouBaoApi {
 
     /**
      * 获取会话上下文
+     *
      * @param sessionId
      * @return
      */
@@ -125,9 +142,10 @@ public class DouBaoImpl implements IDouBaoApi {
             // 如果内存中没有，从数据库中获取
             List<SessionContext> sessionContextList = sessionContextMapper.getBySessionIdOrderByDate(sessionId);
             if (sessionContextList.size() > 0) {
-                for (SessionContext sessionContext : sessionContextList){
+                for (SessionContext sessionContext : sessionContextList) {
                     String messagesJson = sessionContext.getMessages();
-                    ChatMessage chatMessage = JSON.parseObject(messagesJson, new TypeReference<ChatMessage>() {});
+                    ChatMessage chatMessage = JSON.parseObject(messagesJson, new TypeReference<ChatMessage>() {
+                    });
                     messages.add(chatMessage);
                 }
                 inMemorySessionContext.put(sessionId, messages);
@@ -138,8 +156,9 @@ public class DouBaoImpl implements IDouBaoApi {
 
     /**
      * 保存会话上下文
+     *
      * @param sessionId
-     * @param 
+     * @param
      */
     public void saveSessionContext(String sessionId, ChatMessage chatMessage) {
         // 更新内存中的数据
@@ -151,6 +170,4 @@ public class DouBaoImpl implements IDouBaoApi {
         sessionContextMapper.insert(sessionContext);
     }
     
-
-
 }

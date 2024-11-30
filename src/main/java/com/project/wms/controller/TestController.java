@@ -17,7 +17,7 @@ public class TestController {
     public void testDoubao( @RequestBody Map<String, String> body){
         Map<String,String> params = body;
         String sessionId = body.get("sessionId");
-        System.out.println(douBaoApi.chatGPT2(body,sessionId));
+        System.out.println(douBaoApi.chatGPT2(body,sessionId,false));
     }
     
 }
