@@ -14,7 +14,7 @@
     </select>
 
     <select id="getBySessionIdOrderByDate" resultMap="BaseResultMap">
-        SELECT * FROM session_context WHERE session_id = #{sessionId} ORDER BY last_updated
+        SELECT * FROM session_context WHERE session_id = #{sessionId} ORDER BY last_updated DESC LIMIT 10
     </select>
 
 <!--    <update id="updateById">-->

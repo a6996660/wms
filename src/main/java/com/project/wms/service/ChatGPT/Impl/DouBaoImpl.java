@@ -47,7 +47,7 @@ public class DouBaoImpl implements IDouBaoApi {
 
     private final ConcurrentHashMap<String, List<ChatMessage>> inMemorySessionContext = new ConcurrentHashMap<>();
 
-    private static final int MAX_CONTEXT_LENGTH = 20; // 最大上下文长度
+    private static final int MAX_CONTEXT_LENGTH = 10; // 最大上下文长度
 
     public String chatGPT2(Map<String, String> params, String sessionId, Boolean isBot) {
         try {
@@ -78,6 +78,7 @@ public class DouBaoImpl implements IDouBaoApi {
             // 发送请求并获取响应
             AtomicReference<String> returnMessage = new AtomicReference<>("");
             if (isBot){
+                System.out.println(messages);
                 BotChatCompletionRequest chatCompletionRequest = BotChatCompletionRequest.builder()
                         .botId(botId) //bot-20241125225426-wzcrl 为您当前的智能体的ID，注意此处与Chat API存在差异。差异对比详见 SDK使用指南
                         .messages(messages)
@@ -95,6 +96,7 @@ public class DouBaoImpl implements IDouBaoApi {
                         }
                 );
             }else{
+                System.out.println(messages);
                 // 构建请求
                 ChatCompletionRequest chatCompletionRequest = ChatCompletionRequest.builder()
                         .model(model)
